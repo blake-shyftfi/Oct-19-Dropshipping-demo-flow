@@ -257,6 +257,36 @@ input[type=checkbox]:disabled{cursor:default}
 .fld{display:grid;grid-template-columns:140px minmax(0,1fr);gap:8px;align-items:center;margin:8px 0}
 .fld input{border:1px solid var(--border);background:var(--surface);border-radius:4px;padding:6px 8px;width:100%}
 .nomap{color:var(--warn);font-size:12.5px}
+/* ---- product many2one autocomplete + Search more (v3) ---- */
+.m2o{position:relative;display:flex;align-items:center}
+.tbl .m2o .m2o-in{padding-right:20px}
+.m2o-caret{position:absolute;right:0;top:0;bottom:0;background:none;border:0;color:var(--muted);font-size:10px;cursor:pointer;padding:0 4px}
+.m2o-menu{position:fixed;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:45;padding:4px 0;min-width:240px;max-width:min(480px,calc(100vw - 16px));max-height:320px;overflow:auto}
+.m2o-menu button{display:flex;gap:16px;justify-content:space-between;width:100%;background:none;border:0;padding:5px 14px;text-align:left;cursor:pointer;white-space:nowrap}
+.m2o-menu button:hover,.m2o-menu button.hl{background:var(--surface-2)}
+.m2o-menu .ref{color:var(--muted)}
+.m2o-menu .more{color:var(--primary);padding-left:22px}
+.m2o-menu .none{padding:5px 14px;color:var(--muted);font-style:italic}
+.modal.xl{max-width:1240px}
+.ps-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.ps-search{flex:1 1 300px;max-width:440px;margin:0 auto;display:flex;align-items:center;gap:8px;border:1px solid var(--primary);border-radius:4px;padding-left:10px;background:var(--surface)}
+.ps-search svg{width:16px;height:16px;flex:none}
+.ps-search input{flex:1;min-width:0;border:0;background:transparent;padding:8px 0;outline:none}
+.ps-search .stoggle{padding:0 12px}
+.ps-pager{display:flex;align-items:center;gap:6px;margin-left:auto;white-space:nowrap}
+.ps-pager button{border:0;background:var(--surface-2);padding:5px 11px;border-radius:4px;cursor:pointer;color:var(--muted)}
+.ps-pager button:disabled{cursor:default;opacity:.6}
+.ps-tbl tbody tr{cursor:pointer}
+.ps-tbl tbody tr:hover td{background:var(--surface-2)}
+.ps-tbl tbody tr.on td{background:var(--sel)}
+.ps-tbl td,.ps-tbl th{white-space:nowrap}
+.ps-tbl .star{color:var(--muted);width:30px;padding-right:0}
+.ps-tbl .star svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6}
+.ps-tbl tfoot td{font-weight:600;background:var(--surface-2);border-bottom:0}
+.ps-tbl .opt{width:30px;color:var(--muted)}
+.ps-body{min-height:340px}
+.ps-tbl .pn{max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.ps-tbl td,.ps-tbl th{padding-left:8px;padding-right:8px}
 </style>
 </head>
 <body>
@@ -277,15 +307,15 @@ const VENDORS = {
   hfc:{id:'hfc', name:'HICKORY FURNITURE CO.', short:'HICKORY'}
 };
 const PRODUCTS = [
-  {id:'p1', name:'[Fabric] 14 YARDS PORTICO BUTTERSCOTCH', route:'dropship', price:420,
+  {id:'p1', ref:'FAB-PORT-14', name:'[Fabric] 14 YARDS PORTICO BUTTERSCOTCH', route:'dropship', price:420,
     vendors:[{v:'eng', onHand:42, cost:265, lead:5},{v:'kra', onHand:15, cost:252, lead:9},{v:'fab', onHand:0, cost:248, lead:14}]},
-  {id:'p2', name:'[Sofa] CREEK SIDE 3-SEAT SECTIONAL', route:'dropship', price:2890,
+  {id:'p2', ref:'SOF-CS-3S', name:'[Sofa] CREEK SIDE 3-SEAT SECTIONAL', route:'dropship', price:2890,
     vendors:[{v:'eng', onHand:6, cost:1850, lead:21},{v:'hfc', onHand:2, cost:1790, lead:28}]},
-  {id:'p3', name:'[Chair] ACCENT CHAIR - OATMEAL', route:'dropship', price:760,
+  {id:'p3', ref:'CHR-ACC-OAT', name:'[Chair] ACCENT CHAIR - OATMEAL', route:'dropship', price:760,
     vendors:[{v:'eng', onHand:18, cost:480, lead:10},{v:'hfc', onHand:0, cost:455, lead:30}]},
-  {id:'p4', name:'[Fabric] 10 YARDS VELVET NAVY', route:'dropship', price:310,
+  {id:'p4', ref:'FAB-VEL-NV10', name:'[Fabric] 10 YARDS VELVET NAVY', route:'dropship', price:310,
     vendors:[{v:'fab', onHand:60, cost:190, lead:4},{v:'kra', onHand:25, cost:198, lead:6}]},
-  {id:'p5', name:'[Decor] THROW PILLOW 20" - IVORY', route:'stock', price:45, vendors:[]}
+  {id:'p5', ref:'DEC-PIL-20', name:'[Decor] THROW PILLOW 20" - IVORY', route:'stock', price:45, stock:120, forecast:110, vendors:[]}
 ];
 const MEMBERS = [
   {id:'m1', name:'#1 Brooklyn Furniture', city:'Brooklyn NY'},
@@ -684,7 +714,7 @@ function vendorCell(l, i, draft){
   const vi = l.vendor ? vinfo(l.pid, l.vendor) : null;
   const short = vi && vi.onHand < l.qty ? `<div class="warn-txt">Only ${vi.onHand} on hand</div>` : '';
   if(!draft) return `${esc(ven(l.vendor).short)}${short}`;
-  return `<button class="vendor-btn" data-act="vendor-change" data-i="${i}" title="Change vendor">${l.vendor?esc(ven(l.vendor).short):'<span class="muted">Select vendor</span>'} ${I.pencil}</button>${short}`;
+  return `<button class="vendor-btn" data-act="vendor-change" data-i="${i}" title="Change vendor: opens product search for this product">${l.vendor?esc(ven(l.vendor).short):'<span class="muted">Select vendor</span>'} ${I.pencil}</button>${short}`;
 }
 function viewSOForm(so){
   if(!so) return viewSOList();
@@ -693,12 +723,11 @@ function viewSOForm(so){
   const m = so.customer ? mem(so.customer) : null;
   const smart = `<div class="smart">${so.poIds.length?smartBtn('cart','Purchase',so.poIds.length,'so-purchase',`data-id="${so.id}"`):''}${picks.length?smartBtn('truck','Dropship',picks.length,'so-dropship',`data-id="${so.id}"`):''}</div>`;
   const custOpts = `<option value=""></option>` + MEMBERS.map(x=>`<option value="${x.id}" ${x.id===so.customer?'selected':''}>${esc(x.name)}</option>`).join('');
-  const prodOpts = sel => `<option value="">Select a product…</option>` + PRODUCTS.map(p=>`<option value="${p.id}" ${p.id===sel?'selected':''}>${esc(p.name)}</option>`).join('');
   const routeNote = p => p.route==='dropship' ? 'Route: Dropship' : 'Route: Ship from stock';
   let lines;
   if(draft){
     lines = so.lines.map((l,i)=>{ const p = l.pid?prod(l.pid):null; return `<tr>
-      <td><select data-chg="so-line-prod" data-i="${i}" aria-label="Product">${prodOpts(l.pid)}</select>${p?`<div class="small muted">${routeNote(p)}</div>`:''}</td>
+      <td><div class="m2o"><input class="m2o-in" data-m2o="${i}" data-val="${p?esc(p.name):''}" value="${p?esc(p.name):''}" placeholder="Search a product" autocomplete="off" aria-label="Product" aria-haspopup="listbox"><button class="m2o-caret" data-act="m2o-caret" data-i="${i}" tabindex="-1" aria-label="Show products">▼</button></div>${p?`<div class="small muted">${routeNote(p)}</div>`:''}</td>
       <td>${vendorCell(l,i,true)}</td>
       <td class="num"><input type="number" min="1" value="${l.qty}" data-chg="so-line-qty" data-i="${i}" aria-label="Quantity"></td>
       <td class="num">${p?num(p.price):''}</td><td><span class="tax">6%</span></td><td class="num">${p?money(p.price*l.qty):''}</td>
@@ -965,20 +994,85 @@ function openModal(title, body, footer, size='', locked=false){
 }
 const closeModal = () => { document.getElementById('modal').innerHTML = ''; S.vpick = null; S.lock = false; };
 
-function openVendorPicker(i, pid){
-  const so = soById(S.view.id), l = so.lines[i], p = prod(pid), qty = l.qty;
-  const ranked = p.vendors.slice().sort((a,b)=> ((b.onHand>=qty)-(a.onHand>=qty)) || a.cost-b.cost);
-  const current = l.pid===pid && l.vendor ? l.vendor : (ranked.find(x=>x.onHand>=qty) || ranked.slice().sort((a,b)=>b.onHand-a.onHand)[0]).v;
-  S.vpick = {i, pid, choice:current};
-  const avail = x => x.onHand===0 ? badge('Out of stock','danger') : x.onHand < qty ? badge('Not enough stock','warn') : badge('Available','ok');
-  const rows = p.vendors.map(x=>`<tr class="${x.v===current?'on':''}" data-act="vendor-row" data-v="${x.v}">
-    <td><input type="radio" name="vsel" value="${x.v}" ${x.v===current?'checked':''} aria-label="${esc(ven(x.v).name)}"></td>
-    <td>${esc(ven(x.v).name)}</td><td class="num">${x.onHand}</td><td class="num">${num(x.cost)}</td><td class="num">${plural(x.lead,'day')}</td><td>${avail(x)}</td></tr>`).join('');
-  openModal('Select Vendor',
-    `<p><b>${esc(p.name)}</b><br><span class="muted">Requested quantity: ${qty}. This product is available from ${plural(p.vendors.length,'vendor')}.</span></p>
-     <div class="tbl-wrap"><table class="tbl vtbl"><thead><tr><th></th><th>Vendor</th><th class="num">On Hand at Vendor</th><th class="num">Unit Cost</th><th class="num">Lead Time</th><th>Availability</th></tr></thead><tbody>${rows}</tbody></table></div>
-     <p class="small muted" style="margin-top:10px">On hand is the vendor's available stock for this product. The selected vendor decides which RFQ / PO this line goes to when the order is confirmed.</p>`,
-    `<button class="btn btn-primary" data-act="vendor-select">Select</button><button class="btn" data-act="modal-x">Discard</button>`);
+/* ---------- product many2one: dropdown + Search more ---------- */
+const M2O_LIMIT = 8;
+const prodMatch = (p, q) => { q = (q||'').trim().toLowerCase(); return !q || p.name.toLowerCase().includes(q) || (p.ref||'').toLowerCase().includes(q); };
+let M2O = null;   // {i, q, hl, hits}
+function closeM2o(restore=true){
+  document.querySelectorAll('.m2o-menu').forEach(m=>m.remove());
+  if(restore) document.querySelectorAll('.m2o-in').forEach(inp=>{ inp.value = inp.dataset.val; });
+  M2O = null;
+}
+function showM2o(i, q){
+  const inp = document.querySelector(`.m2o-in[data-m2o="${i}"]`); if(!inp) return;
+  document.querySelectorAll('.m2o-menu').forEach(m=>m.remove());
+  const hits = PRODUCTS.filter(p=>prodMatch(p,q)).slice(0, M2O_LIMIT);
+  M2O = {i, q, hl: hits.length ? 0 : -1, hits};
+  const menu = document.createElement('div');
+  menu.className = 'm2o-menu'; menu.setAttribute('role','listbox');
+  menu.innerHTML = (hits.length
+      ? hits.map((p,k)=>`<button role="option" class="${k===0?'hl':''}" data-act="m2o-pick" data-i="${i}" data-pid="${p.id}"><span>${esc(p.name)}</span><span class="ref">${esc(p.ref||'')}</span></button>`).join('')
+      : `<div class="none">No records</div>`)
+    + `<button class="more" data-act="m2o-more" data-i="${i}">Search more...</button>`;
+  document.body.appendChild(menu);
+  const r = inp.getBoundingClientRect();
+  menu.style.minWidth = Math.max(240, r.width) + 'px';
+  menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
+  const below = r.bottom + 2, h = menu.offsetHeight;
+  menu.style.top = (below + h > window.innerHeight - 8 && r.top - h - 2 > 8 ? r.top - h - 2 : below) + 'px';
+}
+function moveM2o(d){
+  if(!M2O || !M2O.hits.length) return;
+  M2O.hl = (M2O.hl + d + M2O.hits.length) % M2O.hits.length;
+  document.querySelectorAll('.m2o-menu [data-act="m2o-pick"]').forEach((b,k)=>b.classList.toggle('hl', k===M2O.hl));
+}
+function selectProduct(i, pid){
+  closeM2o(false);
+  const l = soById(S.view.id).lines[i];
+  if(pid && prod(pid).route==='dropship'){ l.pid = pid; l.vendor = defaultVendor(pid, l.qty); render(); return; }
+  l.pid = pid; l.vendor = null; render();
+}
+/* default vendor when picked from the dropdown: enough stock first, then lowest cost */
+function defaultVendor(pid, qty){
+  const vs = prod(pid).vendors.slice().sort((a,b)=> ((b.onHand>=qty)-(a.onHand>=qty)) || a.cost-b.cost);
+  return vs.length ? vs[0].v : null;
+}
+function setLine(i, pid, v){
+  const l = soById(S.view.id).lines[i];
+  l.pid = pid; l.vendor = prod(pid).route==='dropship' ? (v || defaultVendor(pid, l.qty)) : null; render();
+}
+/* qty already on RFQs / POs for this product + vendor */
+const committed = (pid, v) => S.rfqs.filter(r=>r.vendor===v).reduce((a,r)=>a + r.lines.filter(x=>x.pid===pid).reduce((b,x)=>b+x.qty,0), 0);
+/* Search more rows: one row per product + vendor (stock products: one row, company stock) */
+const psEntries = () => PRODUCTS.flatMap(p=> p.vendors.length ? p.vendors.map(x=>({p, x})) : [{p, x:null}]);
+const psMatch = (e, q) => { q = (q||'').trim().toLowerCase(); return !q || prodMatch(e.p, q) || (e.x && (ven(e.x.v).name.toLowerCase().includes(q) || ven(e.x.v).short.toLowerCase().includes(q))); };
+function psRows(q){
+  const list = psEntries().filter(e=>psMatch(e,q));
+  const cur = S.psearch ? soById(S.view.id)?.lines[S.psearch.i] : null;
+  const cb = on => `<input type="checkbox" disabled ${on?'checked':''} aria-hidden="true" tabindex="-1">`;
+  const oh = e => e.x ? e.x.onHand : (e.p.stock||0);
+  const fc = e => e.x ? e.x.onHand - committed(e.p.id, e.x.v) : (e.p.forecast ?? e.p.stock ?? 0);
+  const body = list.map(e=>{ const {p, x} = e, on = cur && cur.pid===p.id && (cur.vendor||null)===(x?x.v:null);
+    return `<tr class="${on?'on':''}" data-act="ps-pick" data-pid="${p.id}" data-v="${x?x.v:''}"><td class="star">${I.star}</td><td class="pn" title="${esc(p.name)}">${esc(p.name)}</td><td>${esc(p.ref||'')}</td>
+      <td>${x?esc(ven(x.v).short):''}</td>
+      <td class="center">${cb(p.route==='dropship')}</td><td></td><td class="num">${money(p.price)}</td><td class="center">${cb(true)}</td>
+      <td class="num">${money(x?x.cost:0)}</td><td></td><td class="num">${num(oh(e))}</td><td class="num">${num(fc(e))}</td><td></td></tr>`; }).join('')
+    || `<tr><td colspan="13" class="muted" style="text-align:center;padding:24px">No product matches “${esc(q)}”.</td></tr>`;
+  const tot = list.reduce((a,e)=>a+oh(e),0), totF = list.reduce((a,e)=>a+fc(e),0);
+  return {list, body, foot:`<tr><td colspan="10"></td><td class="num">${num(tot)}</td><td class="num">${num(totF)}</td><td></td></tr>`};
+}
+function openProductSearch(i, q=''){
+  S.psearch = {i};
+  const r = psRows(q), n = r.list.length;
+  openModal('Search: Product',
+    `<div class="ps-body"><div class="ps-bar">
+       <div class="ps-search">${I.search}<input id="psQ" placeholder="Search..." value="${esc(q)}" autocomplete="off" aria-label="Search products"><button class="stoggle" data-act="noop" aria-label="Toggle search panel">▼</button></div>
+       <div class="ps-pager"><span id="psPager">${n?`1-${n}`:'0'} / ${n}</span><button disabled aria-label="Previous">‹</button><button disabled aria-label="Next">›</button></div>
+     </div>
+     <div class="tbl-wrap"><table class="tbl ps-tbl"><thead><tr><th class="star"></th><th>Product Name</th><th title="Internal Reference">Internal Ref.</th><th>Vendor</th><th class="center">Dropship</th><th>Company</th><th class="num">Sales Price</th><th class="center">Active</th><th class="num">Cost</th><th title="Income Account">Income Acc.</th><th class="num">On Hand</th><th class="num">Forecasted</th><th class="opt"><button class="link muted" data-act="noop" aria-label="Optional columns">⇄</button></th></tr></thead>
+       <tbody id="psBody">${r.body}</tbody><tfoot id="psFoot">${r.foot}</tfoot></table></div></div>`,
+    `<button class="btn btn-primary" data-act="noop">New</button><button class="btn" data-act="modal-x">Close</button>`, 'xl');
+  const inp = document.getElementById('psQ'); inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
 }
 function openReadyModal(r){
   const re = r.reopened;
@@ -1080,11 +1174,16 @@ function render(){
 document.addEventListener('click', e=>{
   if(e.target.closest('td.cb, th.cb')) return;            // list checkboxes are handled by the change event
   const el = e.target.closest('[data-act]');
+  if(M2O && !e.target.closest('.m2o, .m2o-menu')) closeM2o();
   if(S.menu && !e.target.closest('.dropdown')){ S.menu = null; if(!el){ render(); return; } }
   if(!el) return;
   const a = el.dataset.act, id = el.dataset.id;
   switch(a){
     case 'none': break;
+    case 'm2o-caret': { const i = +el.dataset.i, inp = document.querySelector(`.m2o-in[data-m2o="${i}"]`); if(M2O && M2O.i===i) closeM2o(); else inp.focus(); break; }
+    case 'm2o-pick': selectProduct(+el.dataset.i, el.dataset.pid); break;
+    case 'm2o-more': { const i = +el.dataset.i, q = M2O ? M2O.q : ''; closeM2o(); openProductSearch(i, q); break; }
+    case 'ps-pick': { const i = S.psearch.i; closeModal(); setLine(i, el.dataset.pid, el.dataset.v || null); break; }
     case 'nav-sales': go('sales'); break;
     case 'nav-purchase': go('purchase'); break;
     case 'nav-pick': go('pick'); break;
@@ -1112,16 +1211,7 @@ document.addEventListener('click', e=>{
     }
     case 'merge-go': if(S.dlg && S.dlg.choice) doMerge(rfqById(S.dlg.choice)); break;
     case 'merge-back': nextDecision(); break;
-    case 'vendor-change': { const l = soById(S.view.id).lines[+el.dataset.i]; openVendorPicker(+el.dataset.i, l.pid); break; }
-    case 'vendor-row': {
-      S.vpick.choice = el.dataset.v;
-      document.querySelectorAll('.vtbl tbody tr').forEach(tr=>{ const on = tr.dataset.v===el.dataset.v; tr.classList.toggle('on', on); tr.querySelector('input').checked = on; });
-      break;
-    }
-    case 'vendor-select': {
-      const vp = S.vpick, l = soById(S.view.id).lines[vp.i];
-      l.pid = vp.pid; l.vendor = vp.choice; closeModal(); render(); break;
-    }
+    case 'vendor-change': { const i = +el.dataset.i, l = soById(S.view.id).lines[i]; openProductSearch(i, prod(l.pid).ref); break; }
     case 'so-purchase': { const so = soById(id); so.poIds.length===1 ? go('purchase','form',so.poIds[0]) : go('purchase','list',null,{soId:id}); break; }
     case 'so-dropship': { const ps = S.picks.filter(p=>p.soId===id); ps.length===1 ? go('pick','form',ps[0].id) : go('pick','list',null,{soId:id}); break; }
     case 'rfq-sales': { const ids = rfqSoIds(rfqById(id)); ids.length===1 ? go('sales','form',ids[0]) : go('sales','list',null,{ids}); break; }
@@ -1161,18 +1251,34 @@ document.addEventListener('change', e=>{
   const el = e.target;
   if(el.matches('[data-sel]')){ const id = el.dataset.sel; S.sel = el.checked ? [...new Set([...S.sel,id])] : S.sel.filter(x=>x!==id); S.menu=null; render(); return; }
   if(el.matches('[data-selall]')){ S.sel = el.checked ? soFiltered().map(s=>s.id) : []; S.menu=null; render(); return; }
-  if(el.name==='vsel'){ S.vpick.choice = el.value; document.querySelectorAll('.vtbl tbody tr').forEach(tr=>tr.classList.toggle('on', tr.dataset.v===el.value)); return; }
   if(el.name==='posel'){ S.dlg.choice = el.value; document.querySelectorAll('.vtbl tbody tr').forEach(tr=>tr.classList.toggle('on', tr.dataset.id===el.value)); document.getElementById('mergeBtn').disabled = false; return; }
   const a = el.dataset.chg; if(!a) return;
-  if(a==='so-line-prod'){
-    const i = +el.dataset.i, l = soById(S.view.id).lines[i], pid = el.value;
-    if(pid && prod(pid).route==='dropship'){ render(); openVendorPicker(i, pid); return; }   // vendor chosen in the picker
-    l.pid = pid; l.vendor = null;
-  }
   if(a==='so-customer'){ soById(S.view.id).customer = el.value; }
   if(a==='so-line-qty'){ soById(S.view.id).lines[+el.dataset.i].qty = Math.max(1, parseInt(el.value)||1); }
   render();
 });
+document.addEventListener('focusin', e=>{
+  const inp = e.target.closest('.m2o-in'); if(!inp) return;
+  if(!M2O || M2O.i!==+inp.dataset.m2o){ closeM2o(); inp.select(); showM2o(+inp.dataset.m2o, ''); }
+});
+document.addEventListener('input', e=>{
+  if(e.target.matches('.m2o-in')) showM2o(+e.target.dataset.m2o, e.target.value);
+  if(e.target.id==='psQ'){
+    const r = psRows(e.target.value), n = r.list.length;
+    document.getElementById('psBody').innerHTML = r.body; document.getElementById('psFoot').innerHTML = r.foot;
+    document.getElementById('psPager').textContent = `${n?`1-${n}`:'0'} / ${n}`;
+  }
+});
+document.addEventListener('keydown', e=>{
+  if(!M2O || !e.target.matches('.m2o-in')) return;
+  if(e.key==='ArrowDown'){ e.preventDefault(); moveM2o(1); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); moveM2o(-1); }
+  else if(e.key==='Enter'){ e.preventDefault(); if(M2O.hl>=0) selectProduct(M2O.i, M2O.hits[M2O.hl].id); }
+  else if(e.key==='Escape'){ e.stopImmediatePropagation(); closeM2o(); e.target.blur(); }
+  else if(e.key==='Tab') closeM2o();
+}, true);
+window.addEventListener('scroll', e=>{ if(M2O && !e.target.closest?.('.m2o-menu')) closeM2o(); }, true);
+window.addEventListener('resize', ()=>{ if(M2O) closeM2o(); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ if(document.querySelector('.backdrop') && !S.lock){ closeModal(); render(); } if(S.menu){ S.menu=null; render(); } } });
 
 render();
